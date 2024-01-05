@@ -1,0 +1,65 @@
+name: Client Diff Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref1:
+        description: 'First ref, e.g. v1.40.0'
+        required: true
+      ref2:
+        description: 'Second branch, e.g. main'
+        required: true
+        default: main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Create and checkout new branch
+      id: prepare-branch
+      run: |
+        set -e
+        git config user.name "GitHub Action"
+        git config user.email "action@github.com"
+        BRANCH_NAME="branch-$(date +%s)"
+        echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_OUTPUT
+        git checkout -b "$BRANCH_NAME"
+
+        cd ..
+        git clone https://github.com/microsoft/playwright
+        cd playwright
+        git checkout ${{ github.event.inputs.ref1 }}
+        cp -r packages/playwright-core/src/client/ ${{ github.workspace }}
+        cd ${{ github.workspace }}
+        git add .
+        git commit -m "Stash ref ${{ github.event.inputs.ref1 }}"
+
+        cd ../playwright
+        git checkout ${{ github.event.inputs.ref2 }}
+        cp -r packages/playwright-core/src/client/ ${{ github.workspace }}
+        cd ${{ github.workspace }}
+        git add .
+        git commit -m "Stash ref ${{ github.event.inputs.ref2 }}"
+
+        git push origin "$BRANCH_NAME"
+    - name: Create Pull Request
+      uses: actions/github-script@v6
+      with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.pulls.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                head: '${{ steps.prepare-branch.outputs.BRANCH_NAME }}',
+                base: 'main',
+                title: 'Diff between ${{ github.event.inputs.ref1 }} and ${{ github.event.inputs.ref2 }}',
+            });
