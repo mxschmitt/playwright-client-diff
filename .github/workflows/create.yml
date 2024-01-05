@@ -39,6 +39,7 @@ jobs:
         cd playwright
         git checkout ${{ github.event.inputs.ref1 }}
         cp -r packages/playwright-core/src/client/ ${{ github.workspace }}
+        cp -r tests/ ${{ github.workspace }}
         cd ${{ github.workspace }}
         git add .
         git commit -m "Stash ref ${{ github.event.inputs.ref1 }}"
@@ -46,6 +47,7 @@ jobs:
         cd ../playwright
         git checkout ${{ github.event.inputs.ref2 }}
         cp -r packages/playwright-core/src/client/ ${{ github.workspace }}
+        cp -r tests ${{ github.workspace }}
         cd ${{ github.workspace }}
         git add .
         git commit -m "Stash ref ${{ github.event.inputs.ref2 }}"
